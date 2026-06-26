@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Anonymous help</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { background: #1A2E25; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; }
+
+  .phone {
+    width: 375px; height: 812px; background: #ECFDF5;
+    display: flex; flex-direction: column;
+    border-radius: 40px; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4), 0 0 0 10px #1A2E25;
+    position: relative;
+  }
+
+  /* Status bar */
+  .status-bar {
+    background: #047857; padding: 12px 20px 8px;
+    display: flex; justify-content: space-between; align-items: center;
+    color: white; font-size: 12px; font-weight: 600; flex-shrink: 0;
+    position: relative;
+  }
+  .notch {
+    width: 80px; height: 22px; background: #000; border-radius: 12px;
+    position: absolute; left: 50%; transform: translateX(-50%); top: 8px;
+  }
+
+  /* App header */
+  .app-header { background: #047857; padding: 8px 20px 14px; flex-shrink: 0; }
+  .app-header h1 { font-size: 18px; font-weight: 800; color: white; letter-spacing: -0.5px; }
+  .app-header p { font-size: 11px; color: #A7F3D0; margin-top: 2px; }
+
+  /* Swipe container */
+  .swipe-wrapper { flex: 1; overflow: hidden; position: relative; }
+  .swipe-rail {
+    display: flex; width: 1125px; height: 100%;
+    transition: transform 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: transform;
+  }
+  .swipe-rail.no-transition { transition: none; }
+  .screen { width: 375px; height: 100%; flex-shrink: 0; overflow-y: auto; }
+
+  /* Dot indicators */
+  .dots {
+    position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 6px; pointer-events: none; z-index: 10;
+  }
+  .dot { height: 6px; border-radius: 3px; background: #A7F3D0; transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+  .dot.active { background: #10B981; width: 20px !important; }
+
+  /* Nav bar */
+  .nav-bar { display: flex; border-top: 1px solid #D1FAE5; background: white; padding-bottom: 8px; flex-shrink: 0; }
+  .nav-btn { flex: 1; border: none; background: none; padding: 10px 0 4px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; position: relative; }
+  .nav-btn .nav-icon-wrap { position: relative; }
+  .nav-btn .nav-icon { font-size: 20px; line-height: 1; }
+  .nav-btn .nav-label { font-size: 10px; font-weight: 500; color: #9CA3AF; letter-spacing: 0.3px; font-family: inherit; }
+  .nav-btn.active .nav-label { color: #059669; font-weight: 700; }
+  .nav-dot { width: 18px; height: 3px; border-radius: 2px; background: #10B981; margin-top: 2px; display: none; }
+  .nav-btn.active .nav-dot { display: block; }
+  .unread-badge {
+    position: absolute; top: -4px; right: -8px; min-width: 15px; height: 15px;
+    background: #EF4444; color: white; border-radius: 8px; font-size: 9px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; padding: 0 3px;
+    box-shadow: 0 0 0 2px white;
+  }
+
+  /* ── Screen 0: Courses ── */
+  .courses-screen { padding: 16px 16px 48px; }
+  .hero-card {
+    background: linear-gradient(135deg, #059669, #34D399);
+    border-radius: 16px; padding: 18px 20px; margin-bottom: 20px;
+    color: white; position: relative; overflow: hidden;
+  }
+  .hero-card::after {
+    content: ''; position: absolute; top: -20px; right: -20px;
+    width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,0.1);
+  }
+  .hero-card .sub { font-size: 13px; opacity: 0.85; margin-bottom: 4px; }
+  .hero-card .title { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+  .hero-card .desc { font-size: 12px; opacity: 0.75; margin-top: 4px; }
+  .section-label { font-size: 12px; color: #6B7280; font-weight: 600; margin-bottom: 10px; letter-spacing: 0.5px; }
+  .course-card {
+    width: 100%; background: white; border: 1px solid #D1FAE5;
+    border-radius: 14px; padding: 14px 16px; margin-bottom: 10px;
+    cursor: pointer; display: flex; align-items: center; gap: 12px;
+    text-align: left; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    font-family: inherit; transition: background 0.1s;
+  }
+  .course-card:active { background: #ECFDF5; }
+  .course-icon { width: 40px; height: 40px; border-radius: 10px; background: #ECFDF5; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .course-name { font-size: 14px; font-weight: 700; color: #1A2E25; }
+  .course-meta { font-size: 12px; color: #6B7280; margin-top: 2px; }
+  .course-tag { margin-left: 8px; background: #D1FAE5; color: #047857; border-radius: 6px; padding: 1px 7px; font-size: 10px; font-weight: 600; }
+  .course-arrow { color: #34D399; font-size: 16px; margin-left: auto; flex-shrink: 0; }
+  .reply-count-badge { background: #FEF3C7; color: #92400E; border-radius: 10px; padding: 1px 7px; font-size: 10px; font-weight: 700; margin-left: 6px; }
+
+  /* ── Screen 1: Chat ── */
+  .chat-subheader {
+    padding: 12px 16px; border-bottom: 1px solid #D1FAE5;
+    background: white; flex-shrink: 0; display: flex; align-items: center; gap: 8px;
+    position: sticky; top: 0; z-index: 5;
+  }
+  .chat-subheader h2 { font-size: 15px; font-weight: 700; color: #1A2E25; font-family: inherit; }
+  .back-btn { border: none; background: none; color: #059669; cursor: pointer; font-size: 16px; padding: 0; font-family: inherit; display: none; }
+  .chat-body { padding: 12px 16px 48px; }
+  .post-btn {
+    width: 100%; background: linear-gradient(135deg, #10B981, #34D399);
+    border: none; border-radius: 14px; padding: 14px;
+    color: white; font-size: 14px; font-weight: 700; cursor: pointer;
+    margin-bottom: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;
+    box-shadow: 0 4px 12px rgba(16,185,129,0.3); font-family: inherit;
+  }
+
+  /* Reassurance banner under post button */
+  .reassure-banner {
+    display: flex; align-items: center; gap: 8px; background: #F0FDF9; border: 1px solid #D1FAE5;
+    border-radius: 10px; padding: 8px 12px; margin-bottom: 16px; font-size: 11px; color: #047857;
+  }
+
+  .post-form {
+    background: white; border: 1px solid #A7F3D0; border-radius: 16px;
+    padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(16,185,129,0.1);
+    display: none;
+  }
+  .post-form.visible { display: block; }
+  .form-author { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: white; font-weight: bold; flex-shrink: 0;
+  }
+  .form-label { font-size: 11px; color: #6B7280; font-weight: 600; margin-bottom: 8px; }
+  .category-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .pill {
+    border: 1.5px solid #A7F3D0; background: white; border-radius: 20px;
+    padding: 5px 11px; font-size: 12px; cursor: pointer; color: #6B7280;
+    font-family: inherit; transition: all 0.12s;
+  }
+  .pill.selected { border-color: #10B981; background: #ECFDF5; color: #047857; font-weight: 700; }
+  .msg-input {
+    width: 100%; min-height: 90px; border: 1.5px solid #A7F3D0;
+    border-radius: 10px; padding: 10px 12px; font-size: 14px;
+    font-family: inherit; resize: none; outline: none; color: #1A2E25; line-height: 1.6;
+  }
+  .msg-input:focus { border-color: #10B981; }
+  .toggle-row { display: flex; align-items: center; gap: 8px; margin: 10px 0 14px; }
+  .toggle-track {
+    width: 40px; height: 22px; border-radius: 11px; background: #D1D5DB;
+    border: none; cursor: pointer; position: relative; transition: background 0.2s; flex-shrink: 0;
+  }
+  .toggle-track.on { background: #10B981; }
+  .toggle-knob {
+    position: absolute; top: 3px; left: 3px; width: 16px; height: 16px;
+    border-radius: 50%; background: white; transition: left 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .toggle-track.on .toggle-knob { left: 21px; }
+  .toggle-label { font-size: 12px; color: #6B7280; }
+  .form-actions { display: flex; gap: 8px; }
+  .cancel-btn {
+    flex: 1; padding: 11px; border-radius: 10px; border: 1.5px solid #A7F3D0;
+    background: white; color: #6B7280; font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  .send-btn {
+    flex: 2; padding: 11px; border-radius: 10px; border: none;
+    background: #A7F3D0; color: white; font-size: 13px; font-weight: 700;
+    cursor: not-allowed; font-family: inherit; transition: background 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .send-btn.ready { background: #10B981; cursor: pointer; }
+  .send-btn.sending { background: #6EE7B7; cursor: wait; }
+
+  .spinner {
+    width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.5);
+    border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite;
+    display: none;
+  }
+  .send-btn.sending .spinner { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .thread-card { background: white; border: 1px solid #D1FAE5; border-radius: 14px; padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); transition: box-shadow 0.3s, border-color 0.3s; }
+  .thread-card.just-sent { border-color: #34D399; box-shadow: 0 0 0 3px rgba(52,211,153,0.25); }
+  .thread-top { display: flex; gap: 10px; margin-bottom: 10px; }
+  .thread-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .cat-badge { background: #ECFDF5; color: #047857; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
+  .thread-time { font-size: 11px; color: #9CA3AF; margin-left: auto; }
+  .thread-content { font-size: 14px; color: #1A2E25; line-height: 1.6; }
+  .reply-box { background: #ECFDF5; border-radius: 10px; padding: 10px 12px; border-left: 3px solid #34D399; margin-top: 8px; }
+  .reply-from { font-size: 12px; color: #047857; font-weight: 700; margin-bottom: 4px; }
+  .reply-text { font-size: 13px; color: #374151; line-height: 1.6; }
+
+  /* Status chip shown under a question while awaiting reply */
+  .status-chip {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
+    border-radius: 6px; padding: 4px 9px; margin-top: 8px;
+  }
+  .status-chip.delivered { color: #047857; background: #ECFDF5; }
+  .status-chip.waiting { color: #92400E; background: #FEF3C7; }
+  .status-chip .dot-pulse {
+    width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+  .eta-text { font-size: 10px; color: #9CA3AF; margin-top: 4px; }
+
+  .empty-state { text-align: center; padding: 40px 20px; color: #9CA3AF; }
+  .empty-state .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  /* ── Screen 2: Replies ── */
+  .replies-screen { padding: 12px 16px 48px; }
+  .reply-card { background: white; border: 1px solid #D1FAE5; border-radius: 14px; padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); position: relative; }
+  .reply-card.unread::before {
+    content: ''; position: absolute; top: 14px; left: -1px; width: 4px; height: calc(100% - 28px);
+    background: #10B981; border-radius: 0 4px 4px 0;
+  }
+  .new-pill {
+    background: #10B981; color: white; font-size: 9px; font-weight: 700;
+    border-radius: 8px; padding: 2px 7px; letter-spacing: 0.5px; margin-left: 8px;
+  }
+  .quoted { background: #F9FAFB; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; font-size: 12px; color: #6B7280; line-height: 1.5; border-left: 2px solid #E5E7EB; }
+  .quoted strong { font-weight: 600; }
+  .teacher-row { display: flex; gap: 10px; }
+  .teacher-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #059669, #34D399); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .teacher-name { font-size: 13px; font-weight: 700; color: #047857; display: flex; align-items: center; }
+  .teacher-time { font-size: 11px; color: #9CA3AF; }
+  .teacher-text { font-size: 14px; color: #1A2E25; line-height: 1.7; margin-top: 4px; }
+  .reaction-row { display: flex; gap: 6px; margin-top: 10px; }
+  .react-btn { border: 1.5px solid #D1FAE5; background: white; border-radius: 20px; padding: 4px 10px; font-size: 13px; cursor: pointer; transition: all 0.12s; }
+  .react-btn.active { border-color: #34D399; background: #ECFDF5; }
+
+  .followup-btn {
+    width: 100%; background: white; border: 1.5px dashed #34D399; border-radius: 12px;
+    padding: 10px; color: #047857; font-size: 13px; font-weight: 700; cursor: pointer;
+    margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 6px;
+    font-family: inherit; transition: background 0.12s, transform 0.12s;
+  }
+  .followup-btn:active { background: #ECFDF5; transform: scale(0.98); }
+  .followup-hint { font-size: 11px; color: #6B7280; text-align: center; margin-top: 6px; }
+  .followup-form { margin-top: 10px; }
+  .followup-form .msg-input { min-height: 64px; font-size: 13px; }
+
+  /* Toast */
+  .toast {
+    position: absolute; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: #1A2E25; color: white; padding: 10px 18px; border-radius: 24px;
+    font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px;
+    opacity: 0; transition: opacity 0.25s, transform 0.25s; z-index: 50; pointer-events: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3); white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="phone">
+  <!-- Status bar -->
+  <div class="status-bar">
+    <span>9:41</span>
+    <div class="notch"></div>
+    <div style="display:flex;gap:6px;align-items:center"><span>●●●</span><span>🔋</span></div>
+  </div>
+
+  <!-- App header -->
+  <div class="app-header">
+    <h1 id="screen-title">科目選択</h1>
+    <p>Anonymous help</p>
+  </div>
+
+  <!-- Swipe wrapper -->
+  <div class="swipe-wrapper">
+    <div class="swipe-rail" id="rail">
+
+      <!-- Screen 0: Courses -->
+      <div class="screen" id="screen-0">
+        <div class="courses-screen" id="courses-screen"></div>
+      </div>
+
+      <!-- Screen 1: Chat -->
+      <div class="screen" id="screen-1">
+        <div class="chat-subheader">
+          <button class="back-btn" id="back-btn" onclick="goBack()">‹</button>
+          <h2 id="chat-title">すべての質問・相談</h2>
+        </div>
+        <div class="chat-body" id="chat-body">
+          <button class="post-btn" id="post-btn" onclick="showForm()">
+            <span>＋</span> 匿名で質問・相談する
+          </button>
+          <div class="reassure-banner">
+            💡 送信した質問は先生に届き、進捗はこの画面とステータスで確認できます
+          </div>
+
+          <div class="post-form" id="post-form">
+            <div class="form-author">
+              <div class="avatar" style="background:#34D399;font-size:14px">◆</div>
+              <div>
+                <div style="font-size:13px;font-weight:700;color:#1A2E25">匿名投稿</div>
+                <div style="font-size:11px;color:#6B7280">あなたのIDは先生にのみ表示されます</div>
+              </div>
+            </div>
+            <div class="form-label">カテゴリを選ぶ</div>
+            <div class="category-pills" id="pills"></div>
+            <textarea class="msg-input" id="msg-input" placeholder="先生への質問や相談を書いてください..." oninput="checkReady()"></textarea>
+            <div class="toggle-row">
+              <button class="toggle-track on" id="toggle" onclick="togglePublic()">
+                <div class="toggle-knob"></div>
+              </button>
+              <span class="toggle-label" id="toggle-label">🌐 クラス全体に公開</span>
+            </div>
+            <div class="form-actions">
+              <button class="cancel-btn" onclick="hideForm()">キャンセル</button>
+              <button class="send-btn" id="send-btn" onclick="submitPost()">
+                <span class="spinner"></span><span class="send-btn-label">匿名で送信 ✈️</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="threads-container"></div>
+        </div>
+      </div>
+
+      <!-- Screen 2: Replies -->
+      <div class="screen" id="screen-2">
+        <div class="replies-screen" id="replies-screen"></div>
+      </div>
+
+    </div><!-- end rail -->
+
+    <!-- Dot indicators -->
+    <div class="dots" id="dots">
+      <div class="dot active" style="width:20px" id="dot-0"></div>
+      <div class="dot" style="width:6px" id="dot-1"></div>
+      <div class="dot" style="width:6px" id="dot-2"></div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+  </div><!-- end swipe-wrapper -->
+
+  <!-- Nav bar -->
+  <div class="nav-bar">
+    <button class="nav-btn active" id="nav-0" onclick="goToScreen(0)">
+      <span class="nav-icon-wrap"><span class="nav-icon">🏫</span></span>
+      <span class="nav-label">科目</span><div class="nav-dot"></div>
+    </button>
+    <button class="nav-btn" id="nav-1" onclick="goToScreen(1)">
+      <span class="nav-icon-wrap"><span class="nav-icon">💬</span></span>
+      <span class="nav-label">質問</span><div class="nav-dot"></div>
+    </button>
+    <button class="nav-btn" id="nav-2" onclick="goToScreen(2)">
+      <span class="nav-icon-wrap"><span class="nav-icon">✉️</span><span class="unread-badge" id="unread-badge" style="display:none">0</span></span>
+      <span class="nav-label">返信</span><div class="nav-dot"></div>
+    </button>
+  </div>
+</div>
+
+<script>
+// ───────────────────────── Data ─────────────────────────
+const TITLES = ['科目選択', '質問・相談チャット', '返信'];
+const WIDTH = 375;
+let currentIdx = 0;
+let selectedCourse = null;
+let formCategory = null;
+let isPublic = true;
+let nextId = 100;
+
+const CATEGORIES = [
+  { id: 'study',  label: '勉強・学習',   icon: '📚' },
+  { id: 'career', label: '進路・将来',   icon: '🎯' },
+  { id: 'human',  label: '人間関係',     icon: '🤝' },
+  { id: 'mental', label: '気持ち・悩み', icon: '💭' },
+  { id: 'club',   label: '部活・課外',   icon: '⚽' },
+  { id: 'other',  label: 'その他',       icon: '💬' },
+];
+
+const COURSES = [
+  { id: 1, name: 'R8 生物基礎', tag: 'CR=3', teacher: '山田先生' },
+  { id: 2, name: 'Español II', tag: '2026', teacher: 'ガルシア先生' },
+  { id: 3, name: 'R8 古典探究 (1)', tag: '', teacher: '鈴木先生' },
+  { id: 4, name: 'R8 国際情報社会の問題解決', tag: '', teacher: '中村先生' },
+  { id: 5, name: '国食 (め)', tag: '', teacher: '佐藤先生' },
+];
+
+const AVATARS = [
+  { color: '#34D399', shape: '◆' },
+  { color: '#059669', shape: '▲' },
+  { color: '#6EE7B7', shape: '●' },
+  { color: '#047857', shape: '■' },
+];
+function randomAvatar() { return AVATARS[Math.floor(Math.random() * AVATARS.length)]; }
+
+// Single source of truth for all threads (questions + replies)
+let THREADS = [
+  {
+    id: 1, courseId: 1, category: 'study',
+    content: '光合成の明反応と暗反応の違いがよくわかりません。試験前に確認したいです。',
+    timestamp: '2時間前', isPublic: true, avatar: AVATARS[1],
+    delivered: true, justSent: false,
+    replies: [
+      { from: '山田先生', content: '明反応はチラコイドで光エネルギーをATPとNADPHに変換します。暗反応はストロマでCO₂を固定してグルコースを生成します。図を使って説明しましょうか？', timestamp: '1時間前', unread: true }
+    ],
+  },
+  {
+    id: 2, courseId: 2, category: 'study',
+    content: 'スペイン語の接続法がどうしても覚えられません。コツはありますか？',
+    timestamp: '昨日', isPublic: false, avatar: AVATARS[0],
+    delivered: true, justSent: false,
+    replies: [],
+  },
+];
+
+let openFollowup = {};
+let activeReactions = {};
+let repliesScreenVisited = false; // becomes true once user opens the 返信 tab → marks replies read
+
+// ───────────────────────── Toast helper ─────────────────────────
+let toastTimer = null;
+function showToast(msg, icon) {
+  const toast = document.getElementById('toast');
+  toast.innerHTML = `<span>${icon || '✓'}</span><span>${msg}</span>`;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+// ───────────────────────── Unread badge ─────────────────────────
+function countUnreadReplies() {
+  return THREADS.reduce((sum, t) => sum + t.replies.filter(r => r.unread).length, 0);
+}
+function updateUnreadBadge() {
+  const n = countUnreadReplies();
+  const badge = document.getElementById('unread-badge');
+  if (n > 0) {
+    badge.style.display = 'flex';
+    badge.textContent = n > 9 ? '9+' : n;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// ───────────────────────── Render: Courses ─────────────────────────
+function renderCourses() {
+  const el = document.getElementById('courses-screen');
+  let html = `
+    <div class="hero-card">
+      <div class="sub">ようこそ</div>
+      <div class="title">Anonymous help</div>
+      <div class="desc">匿名で先生に質問・相談できます</div>
+    </div>
+    <div class="section-label">履修科目</div>`;
+  COURSES.forEach(c => {
+    const replyCount = THREADS.filter(t => t.courseId === c.id && t.replies.length > 0).length;
+    html += `
+      <button class="course-card" onclick="selectCourse(${c.id})">
+        <div class="course-icon">📖</div>
+        <div style="flex:1">
+          <div class="course-name">${c.name}</div>
+          <div class="course-meta">${c.teacher}
+            ${c.tag ? `<span class="course-tag">${c.tag}</span>` : ''}
+            ${replyCount > 0 ? `<span class="reply-count-badge">返信${replyCount}件</span>` : ''}
+          </div>
+        </div>
+        <span class="course-arrow">›</span>
+      </button>`;
+  });
+  el.innerHTML = html;
+}
+
+// ───────────────────────── Render: Chat ─────────────────────────
+function renderPills() {
+  const el = document.getElementById('pills');
+  el.innerHTML = CATEGORIES.map(cat =>
+    `<button class="pill${formCategory === cat.id ? ' selected' : ''}" onclick="selectCat('${cat.id}')">${cat.icon} ${cat.label}</button>`
+  ).join('');
+}
+
+function renderThreads() {
+  const container = document.getElementById('threads-container');
+  const list = THREADS.filter(t => !selectedCourse || t.courseId === selectedCourse.id)
+                       .slice().reverse();
+
+  if (list.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">💭</div>
+        <p>まだ質問・相談がありません</p>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = list.map(t => {
+    const cat = CATEGORIES.find(c => c.id === t.category);
+    const vis = t.isPublic ? '🌐' : '🔒';
+    let repliesHtml = t.replies.map(r => `
+      <div class="reply-box">
+        <div class="reply-from">👩‍🏫 ${r.from}</div>
+        <div class="reply-text">${escapeHtml(r.content)}</div>
+      </div>`).join('');
+
+    let statusHtml = '';
+    if (t.replies.length === 0) {
+      statusHtml = `
+        <div class="status-chip ${t.delivered ? 'delivered' : 'waiting'}">
+          <span class="dot-pulse"></span>
+          ${t.delivered ? '先生に届きました' : '送信中...'}
+        </div>
+        ${t.delivered ? '<div class="eta-text">通常 1〜2日以内に先生から返信があります</div>' : ''}`;
+    }
+
+    return `
+      <div class="thread-card${t.justSent ? ' just-sent' : ''}" data-thread-id="${t.id}">
+        <div class="thread-top">
+          <div class="avatar" style="background:${t.avatar.color};width:36px;height:36px;font-size:16px;box-shadow:0 0 0 2px white,0 0 0 3px ${t.avatar.color}55">${t.avatar.shape}</div>
+          <div style="flex:1">
+            <div class="thread-meta">
+              <span class="cat-badge">${cat ? cat.icon + ' ' + cat.label : ''}</span>
+              <span class="thread-time">${vis} ${t.timestamp}</span>
+            </div>
+            <div class="thread-content">${escapeHtml(t.content)}</div>
+          </div>
+        </div>
+        ${repliesHtml}
+        ${statusHtml}
+      </div>`;
+  }).join('');
+
+  // Remove the "just sent" highlight after a moment
+  list.filter(t => t.justSent).forEach(t => {
+    setTimeout(() => {
+      t.justSent = false;
+      const card = container.querySelector(`[data-thread-id="${t.id}"]`);
+      if (card) card.classList.remove('just-sent');
+    }, 1800);
+  });
+}
+
+// ───────────────────────── Render: Replies ─────────────────────────
+function renderReplies() {
+  const el = document.getElementById('replies-screen');
+  const withReplies = THREADS.filter(t => t.replies.length > 0);
+
+  if (withReplies.length === 0) {
+    el.innerHTML = `
+      <div class="section-label">先生からの返信</div>
+      <div class="empty-state">
+        <div class="empty-icon">✉️</div>
+        <p>まだ返信がありません</p>
+      </div>`;
+    return;
+  }
+
+  let html = `<div class="section-label">先生からの返信</div>`;
+
+  withReplies.forEach(t => {
+    const cat = CATEGORIES.find(c => c.id === t.category);
+    const quoted = t.content.length > 50 ? t.content.slice(0, 50) + '…' : t.content;
+    const hasUnread = t.replies.some(r => r.unread);
+
+    html += `<div class="reply-card${hasUnread ? ' unread' : ''}">
+      <div class="quoted"><strong>あなたの質問：</strong> ${escapeHtml(quoted)}</div>`;
+
+    t.replies.forEach((r, i) => {
+      html += `
+        <div class="teacher-row" style="${i > 0 ? 'margin-top:14px;' : ''}">
+          <div class="teacher-avatar">👩‍🏫</div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <span class="teacher-name">${r.from}${r.unread ? '<span class="new-pill">NEW</span>' : ''}</span>
+              <span class="teacher-time">${r.timestamp}</span>
+            </div>
+            <div class="teacher-text">${escapeHtml(r.content)}</div>
+            <div class="reaction-row">
+              ${['❤️','👍','✅','❓'].map(icon => {
+                const key = `${t.id}-${i}-${icon}`;
+                const active = activeReactions[key];
+                return `<button class="react-btn${active ? ' active' : ''}" onclick="toggleReact('${t.id}-${i}-${icon}', this)">${icon}</button>`;
+              }).join('')}
+            </div>
+          </div>
+        </div>`;
+    });
+
+    html += `<div style="margin-top:10px"><span class="cat-badge">${cat ? cat.icon + ' ' + cat.label : ''}</span></div>`;
+
+    if (openFollowup[t.id]) {
+      html += `
+        <div class="followup-form" id="followup-form-${t.id}">
+          <div class="form-label" style="margin-top:14px">追加で質問する</div>
+          <textarea class="msg-input" id="followup-input-${t.id}" placeholder="さらに聞きたいことを書いてください..." oninput="checkFollowupReady(${t.id})"></textarea>
+          <div class="form-actions" style="margin-top:10px">
+            <button class="cancel-btn" onclick="hideFollowup(${t.id})">キャンセル</button>
+            <button class="send-btn" id="followup-send-${t.id}" onclick="submitFollowup(${t.id})">
+              <span class="spinner"></span><span class="send-btn-label">追加で送信 ✈️</span>
+            </button>
+          </div>
+        </div>`;
+    } else {
+      html += `
+        <button class="followup-btn" onclick="showFollowup(${t.id})"><span>＋</span> まだ聞きたいことはある？</button>
+        <div class="followup-hint">この続きで先生に追加質問できます</div>`;
+    }
+
+    html += `</div>`;
+  });
+
+  el.innerHTML = html;
+
+  // Mark all currently-shown replies as read after rendering (simulates "viewed")
+  setTimeout(() => {
+    let changed = false;
+    THREADS.forEach(t => t.replies.forEach(r => { if (r.unread) { r.unread = false; changed = true; } }));
+    if (changed) { updateUnreadBadge(); }
+  }, 600);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ───────────────────────── Navigation ─────────────────────────
+function goToScreen(idx, animate = true) {
+  currentIdx = idx;
+  const rail = document.getElementById('rail');
+  if (!animate) rail.classList.add('no-transition');
+  else rail.classList.remove('no-transition');
+  rail.style.transform = `translateX(${-idx * WIDTH}px)`;
+  if (!animate) requestAnimationFrame(() => rail.classList.remove('no-transition'));
+
+  document.getElementById('screen-title').textContent = TITLES[idx];
+
+  for (let i = 0; i < 3; i++) {
+    document.getElementById(`nav-${i}`).classList.toggle('active', i === idx);
+    const dot = document.getElementById(`dot-${i}`);
+    dot.classList.toggle('active', i === idx);
+    dot.style.width = i === idx ? '20px' : '6px';
+  }
+
+  if (idx === 0) renderCourses();
+  if (idx === 1) renderThreads();
+  if (idx === 2) renderReplies();
+}
+
+function selectCourse(id) {
+  selectedCourse = COURSES.find(c => c.id === id);
+  document.getElementById('chat-title').textContent = selectedCourse.name;
+  document.getElementById('back-btn').style.display = 'block';
+  goToScreen(1);
+}
+
+function goBack() {
+  selectedCourse = null;
+  document.getElementById('chat-title').textContent = 'すべての質問・相談';
+  document.getElementById('back-btn').style.display = 'none';
+  renderThreads();
+}
+
+// ───────────────────────── Main post form (Chat screen) ─────────────────────────
+function showForm() {
+  document.getElementById('post-btn').style.display = 'none';
+  document.getElementById('post-form').classList.add('visible');
+  renderPills();
+}
+function hideForm() {
+  document.getElementById('post-btn').style.display = 'flex';
+  document.getElementById('post-form').classList.remove('visible');
+  document.getElementById('msg-input').value = '';
+  formCategory = null;
+  renderPills();
+  checkReady();
+}
+
+function selectCat(catId) {
+  formCategory = catId;
+  renderPills();
+  checkReady();
+}
+
+function togglePublic() {
+  isPublic = !isPublic;
+  const track = document.getElementById('toggle');
+  track.classList.toggle('on', isPublic);
+  document.getElementById('toggle-label').textContent = isPublic ? '🌐 クラス全体に公開' : '🔒 先生にのみ公開';
+}
+
+function checkReady() {
+  const msg = document.getElementById('msg-input').value.trim();
+  const btn = document.getElementById('send-btn');
+  btn.classList.toggle('ready', !!(msg && formCategory));
+}
+
+function submitPost() {
+  const input = document.getElementById('msg-input');
+  const msg = input.value.trim();
+  if (!msg || !formCategory) return;
+
+  const btn = document.getElementById('send-btn');
+  btn.classList.add('sending');
+  btn.disabled = true;
+
+  // Simulate brief network delay so the "sending" state and reassurance are visible
+  setTimeout(() => {
+    const newThread = {
+      id: nextId++,
+      courseId: selectedCourse ? selectedCourse.id : null,
+      category: formCategory,
+      content: msg,
+      timestamp: 'たった今',
+      isPublic: isPublic,
+      avatar: randomAvatar(),
+      delivered: true,
+      justSent: true,
+      replies: [],
+    };
+    THREADS.push(newThread);
+
+    btn.classList.remove('sending');
+    btn.disabled = false;
+    hideForm();
+    renderThreads();
+    renderCourses();
+    showToast('先生に送信しました', '✓');
+  }, 650);
+}
+
+// ───────────────────────── Follow-up question (Replies screen) ─────────────────────────
+function showFollowup(threadId) {
+  openFollowup[threadId] = true;
+  renderReplies();
+  setTimeout(() => {
+    const ta = document.getElementById(`followup-input-${threadId}`);
+    if (ta) ta.focus();
+  }, 0);
+}
+
+function hideFollowup(threadId) {
+  delete openFollowup[threadId];
+  renderReplies();
+}
+
+function checkFollowupReady(threadId) {
+  const ta = document.getElementById(`followup-input-${threadId}`);
+  const btn = document.getElementById(`followup-send-${threadId}`);
+  if (!ta || !btn) return;
+  btn.classList.toggle('ready', ta.value.trim().length > 0);
+}
+
+function submitFollowup(threadId) {
+  const ta = document.getElementById(`followup-input-${threadId}`);
+  const msg = ta.value.trim();
+  if (!msg) return;
+
+  const btn = document.getElementById(`followup-send-${threadId}`);
+  btn.classList.add('sending');
+
+  setTimeout(() => {
+    const original = THREADS.find(t => t.id === threadId);
+    THREADS.push({
+      id: nextId++,
+      courseId: original.courseId,
+      category: original.category,
+      content: '（追加の質問）' + msg,
+      timestamp: 'たった今',
+      isPublic: original.isPublic,
+      avatar: original.avatar,
+      delivered: true,
+      justSent: true,
+      replies: [],
+    });
+
+    delete openFollowup[threadId];
+    renderReplies();
+    showToast('追加の質問を送信しました', '✓');
+  }, 650);
+}
+
+// ───────────────────────── Reactions ─────────────────────────
+function toggleReact(key, btn) {
+  activeReactions[key] = !activeReactions[key];
+  btn.classList.toggle('active');
+}
+
+// ───────────────────────── Swipe gestures ─────────────────────────
+(function() {
+  const wrapper = document.querySelector('.swipe-wrapper');
+  const rail = document.getElementById('rail');
+  let startX = 0, startY = 0, dragX = 0;
+  let isHoriz = false, tracking = false;
+
+  wrapper.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    dragX = 0; isHoriz = false; tracking = false;
+    rail.classList.add('no-transition');
+  }, { passive: true });
+
+  wrapper.addEventListener('touchmove', e => {
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (!tracking && Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+    if (!tracking) { isHoriz = Math.abs(dx) > Math.abs(dy); tracking = true; }
+    if (!isHoriz) return;
+    e.preventDefault();
+    dragX = dx;
+    let offset = dx;
+    if (currentIdx === 0 && dx > 0) offset = dx * 0.18;
+    if (currentIdx === 2 && dx < 0) offset = dx * 0.18;
+    rail.style.transform = `translateX(${-currentIdx * WIDTH + offset}px)`;
+  }, { passive: false });
+
+  wrapper.addEventListener('touchend', () => {
+    if (!isHoriz) { rail.classList.remove('no-transition'); return; }
+    rail.classList.remove('no-transition');
+    if (dragX < -WIDTH * 0.28 && currentIdx < 2) goToScreen(currentIdx + 1);
+    else if (dragX > WIDTH * 0.28 && currentIdx > 0) goToScreen(currentIdx - 1);
+    else goToScreen(currentIdx);
+  });
+
+  let mouseDown = false, mouseStartX = 0, mouseDragX = 0;
+  wrapper.addEventListener('mousedown', e => {
+    if (e.target.closest('textarea, input, button')) return;
+    mouseDown = true; mouseStartX = e.clientX; mouseDragX = 0;
+    rail.classList.add('no-transition');
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', e => {
+    if (!mouseDown) return;
+    mouseDragX = e.clientX - mouseStartX;
+    let offset = mouseDragX;
+    if (currentIdx === 0 && mouseDragX > 0) offset = mouseDragX * 0.18;
+    if (currentIdx === 2 && mouseDragX < 0) offset = mouseDragX * 0.18;
+    rail.style.transform = `translateX(${-currentIdx * WIDTH + offset}px)`;
+  });
+  window.addEventListener('mouseup', () => {
+    if (!mouseDown) return;
+    mouseDown = false;
+    rail.classList.remove('no-transition');
+    if (mouseDragX < -WIDTH * 0.28 && currentIdx < 2) goToScreen(currentIdx + 1);
+    else if (mouseDragX > WIDTH * 0.28 && currentIdx > 0) goToScreen(currentIdx - 1);
+    else goToScreen(currentIdx);
+  });
+})();
+
+// ───────────────────────── Init ─────────────────────────
+renderCourses();
+renderPills();
+renderThreads();
+renderReplies();
+updateUnreadBadge();
+</script>
+</body>
+</html>
